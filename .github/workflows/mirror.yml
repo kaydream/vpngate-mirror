@@ -19,13 +19,14 @@ jobs:
           curl -fsSL --max-time 90 --retry 3 \
             "http://www.vpngate.net/api/iphone/" -o servers.csv
 
-      - name: Loose sanity check (payload is CSV, not an error page)
+      - name: Sanity-check the payload
         run: |
-          # curl -f already guarantees HTTP 200. Reject anything that does
-          # not even look CSV-ish; the strict format check happens on the
-          # consumer side too.
+          # Verified shape of /api/iphone/ (captured 2026-09-10): line 1 is
+          # "*vpn_servers", line 2 names the columns. A captive portal or
+          # error page fails here and nothing is committed.
+          head -n 1 servers.csv | grep -q '^\*vpn_servers$'
+          sed -n '2p' servers.csv | grep -q '^#HostName,'
           [ "$(wc -c < servers.csv)" -gt 1000 ]
-          head -c 200 servers.csv | tr -d '\0' | grep -q ','
 
       - name: Commit if changed
         run: |

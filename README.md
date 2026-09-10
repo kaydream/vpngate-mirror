@@ -23,8 +23,9 @@ the official domain is blocked.
 ## Integrity
 
 - The workflow commits the official response **byte-for-byte**, after
-  checking that it starts with the `*HostName,…` header and ends with
-  `#END`. Anything else is discarded and never committed.
+  checking that it opens with `*vpn_servers` and carries the
+  `#HostName,…` column line. Anything else is discarded and never
+  committed.
 - Raw.githubusercontent serves over HTTPS, so the list cannot be silently
   rewritten in transit by a carrier.
 - The mirror is as trustworthy as this GitHub account. If you are not
