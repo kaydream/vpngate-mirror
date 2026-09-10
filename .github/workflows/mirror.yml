@@ -1,0 +1,41 @@
+name: mirror
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch official CSV
+        run: |
+          curl -fsSL --max-time 90 --retry 3 \
+            "http://www.vpngate.net/api/iphone/" -o servers.csv
+
+      - name: Sanity-check the payload
+        run: |
+          # Same shape the consuming app requires: VPN Gate header first,
+          # #END trailer last. A captive portal or error page fails here
+          # and nothing is committed.
+          head -n 1 servers.csv | grep -q '^\*HostName,'
+          tail -n 1 servers.csv | grep -q '^#END'
+          [ "$(wc -c < servers.csv)" -gt 1000 ]
+
+      - name: Commit if changed
+        run: |
+          git config user.name "mirror-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add servers.csv
+          if git diff --cached --quiet; then
+            echo "No changes since last run."
+          else
+            git commit -m "Refresh server list $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi
