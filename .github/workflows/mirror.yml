@@ -29,12 +29,14 @@ jobs:
             echo "Trying $src"
             if curl -fsSL --max-time 90 --retry 2 "$src" -o servers.csv; then
               # Verified shape of /api/iphone/ (captured 2026-09-10): line 1
-              # is "*vpn_servers", line 2 names the columns. A captive portal
-              # or error page fails here and the next source is tried.
-              if head -n 1 servers.csv | grep -q '^\*vpn_servers$' &&
+              # is "*vpn_servers", line 2 names the columns. The community
+              # mirror publishes the same CSV with CRLF line endings, so the
+              # checks tolerate a trailing CR. A captive portal or error page
+              # fails here and the next source is tried.
+              if head -n 1 servers.csv | grep -q $'^\\*vpn_servers\\r*$' &&
                  sed -n '2p' servers.csv | grep -q '^#HostName,' &&
                  [ "$(wc -c < servers.csv)" -gt 1000 ]; then
-                echo "OK from $src ($(grep -vc '^\*\|^#' servers.csv) servers)"
+                echo "OK from $src ($(grep -vc $'^\\*\\r*$\\|^#' servers.csv) servers)"
                 ok=1
                 break
               fi
