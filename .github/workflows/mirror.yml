@@ -14,19 +14,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch official CSV
+      - name: Fetch server list (official, then community mirror)
         run: |
-          curl -fsSL --max-time 90 --retry 3 \
-            "http://www.vpngate.net/api/iphone/" -o servers.csv
-
-      - name: Sanity-check the payload
-        run: |
-          # Verified shape of /api/iphone/ (captured 2026-09-10): line 1 is
-          # "*vpn_servers", line 2 names the columns. A captive portal or
-          # error page fails here and nothing is committed.
-          head -n 1 servers.csv | grep -q '^\*vpn_servers$'
-          sed -n '2p' servers.csv | grep -q '^#HostName,'
-          [ "$(wc -c < servers.csv)" -gt 1000 ]
+          # The official endpoint resets connections from many datacenter
+          # IPs (observed 2026-09-13), so a community mirror of the same
+          # CSV is the fallback. First source that passes the sanity check
+          # wins; its payload becomes servers.csv.
+          SOURCES=(
+            "http://www.vpngate.net/api/iphone/"
+            "https://raw.githubusercontent.com/GeorgeXie2333/vpngate-list-mirror/main/data/vpngate.csv"
+          )
+          ok=0
+          for src in "${SOURCES[@]}"; do
+            echo "Trying $src"
+            if curl -fsSL --max-time 90 --retry 2 "$src" -o servers.csv; then
+              # Verified shape of /api/iphone/ (captured 2026-09-10): line 1
+              # is "*vpn_servers", line 2 names the columns. A captive portal
+              # or error page fails here and the next source is tried.
+              if head -n 1 servers.csv | grep -q '^\*vpn_servers$' &&
+                 sed -n '2p' servers.csv | grep -q '^#HostName,' &&
+                 [ "$(wc -c < servers.csv)" -gt 1000 ]; then
+                echo "OK from $src ($(grep -vc '^\*\|^#' servers.csv) servers)"
+                ok=1
+                break
+              fi
+              echo "Payload from $src failed the sanity check"
+            fi
+          done
+          [ "$ok" = "1" ] || { echo "All sources failed"; exit 1; }
 
       - name: Commit if changed
         run: |
