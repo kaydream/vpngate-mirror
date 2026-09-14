@@ -33,10 +33,10 @@ jobs:
               # mirror publishes the same CSV with CRLF line endings, so the
               # checks tolerate a trailing CR. A captive portal or error page
               # fails here and the next source is tried.
-              if head -n 1 servers.csv | grep -q $'^\\*vpn_servers\\r*$' &&
+              if head -n 1 servers.csv | grep -q $'^\*vpn_servers\r*$' &&
                  sed -n '2p' servers.csv | grep -q '^#HostName,' &&
                  [ "$(wc -c < servers.csv)" -gt 1000 ]; then
-                echo "OK from $src ($(grep -vc $'^\\*\\r*$\\|^#' servers.csv) servers)"
+                echo "OK from $src ($(grep -vc $'^\*\r*$\|^#' servers.csv) servers)"
                 ok=1
                 break
               fi
